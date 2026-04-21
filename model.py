@@ -279,9 +279,9 @@ class EnsembleAnomalyDetector:
             df_copy = detector.predict(df_copy)
             all_predictions.append(df_copy['anomaly'].values)
         
-        # Unanimous voting: flag as anomaly only if all 3 algorithms agree
+        # Majority voting: flag as anomaly if at least 2 out of 3 agree
         predictions_array = np.array(all_predictions)
-        ensemble_prediction = np.where(predictions_array.sum(axis=0) >= 3, 1, 0)
+        ensemble_prediction = np.where(predictions_array.sum(axis=0) >= 2, 1, 0)
         
         df['anomaly'] = ensemble_prediction
         

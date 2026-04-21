@@ -11,6 +11,36 @@ from utils import preprocess_pipeline, calculate_metrics
 from model import AnomalyDetector, ConsumptionPredictor, EnsembleAnomalyDetector
 
 
+def calculate_dynamic_contamination(dataset_size):
+    """
+    Calculate optimal contamination based on dataset size.
+    Uses a formula that scales appropriately for different dataset sizes.
+    
+    Args:
+        dataset_size: Number of data points in the dataset
+        
+    Returns:
+        Optimal contamination value between 0.01 and 0.10
+    """
+    # Formula: scales with dataset size, bounded between 1% and 10%
+    # Small datasets (<50): ~3-5%
+    # Medium datasets (50-200): ~2-3%
+    # Large datasets (>200): ~1-2%
+    if dataset_size < 50:
+        contamination = 0.05
+    elif dataset_size < 100:
+        contamination = 0.03
+    elif dataset_size < 200:
+        contamination = 0.02
+    else:
+        contamination = 0.015
+    
+    # Ensure bounds
+    contamination = max(0.01, min(0.10, contamination))
+    
+    return contamination
+
+
 # Page configuration
 st.set_page_config(
     page_title="Energy AI Monitor",
@@ -59,6 +89,12 @@ def main():
         
         st.markdown("---")
         
+        # Calculate dynamic contamination based on dataset size
+        contamination = calculate_dynamic_contamination(len(df_processed))
+        
+        # Show calculated contamination
+        st.info(f"🎯 Auto-calculated contamination: {contamination*100:.1f}% (based on {len(df_processed)} data points)")
+        
         # Check if saved models exist
         saved_anomaly_detector = AnomalyDetector.load()
         saved_predictor = ConsumptionPredictor.load()
@@ -82,11 +118,11 @@ def main():
         
         if retrain or saved_anomaly_detector is None:
             if algorithm == "Ensemble (3 Algorithms - Recommended)":
-                anomaly_detector = EnsembleAnomalyDetector(contamination=0.01)
+                anomaly_detector = EnsembleAnomalyDetector(contamination=contamination)
                 anomaly_detector.fit(df_processed)
                 st.info("✅ Ensemble detector trained (Isolation Forest + LOF + SVM)")
             else:
-                anomaly_detector = AnomalyDetector(contamination=0.01)
+                anomaly_detector = AnomalyDetector(contamination=contamination)
                 anomaly_detector.fit(df_processed)
                 st.info("✅ Anomaly detector trained on new data")
         else:
